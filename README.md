@@ -1,6 +1,6 @@
 # Abyssal (abyssal)
 
-A Quasar Framework app
+An instagram like progressive app
 
 ## Install the dependencies
 ```bash
