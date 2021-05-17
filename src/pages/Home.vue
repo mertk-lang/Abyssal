@@ -1,33 +1,66 @@
 <template>
 <q-page class="container q-pa-md">
+   <q-banner v-if="this.errorMessage" dense inline-actions class="text-white bg-red q-mb-lg q-pa-md">
+      {{ errorMessage }}
+    </q-banner>
 <div class="row q-col-gutter-lg">
   <div class="col-12 col-sm-8">
-     <q-card v-for="post in posts" :key="post.id" class="card-post q-mb-md" flat bordered>
-      <q-item>
-        <q-item-section avatar>
-          <q-avatar>
+     <template v-if="!this.loading && posts.length">
+       <q-card v-for="post in posts" :key="post.id" class="card-post q-mb-md" flat bordered>
+         <q-item>
+          <q-item-section avatar>
+           <q-avatar>
             <img src="https://i.pinimg.com/originals/55/55/87/555587aa4cd4a2822dc7a06e70ca998f.jpg">
-          </q-avatar>
-        </q-item-section>
+           </q-avatar>
+           </q-item-section>
 
-        <q-item-section>
-          <q-item-label class="text-bold">Mert Koçak</q-item-label>
-          <q-item-label caption>
+          <q-item-section>
+           <q-item-label class="text-bold">Mert Koçak</q-item-label>
+           <q-item-label caption>
             {{post.location}}
-          </q-item-label>
-        </q-item-section>
+           </q-item-label>
+          </q-item-section>
+         </q-item>
+
+          <q-separator />
+            <q-img
+            :src="post.imageUrl"
+           />
+
+          <q-card-section>
+           <div class="text-caption">{{post.caption}}</div>
+            <div class="text-subtitle2 text-grey-7">{{post.date | convertDate}}</div>
+           </q-card-section>
+        </q-card>
+     </template>
+     <template v-else-if="!this.loading && !this.posts.length">
+       <h5 class="text-center text-grey">Be the first one to post</h5>
+     </template>
+     <template v-else>
+      <q-card flat bordered>
+        <q-item>
+          <q-item-section avatar>
+            <q-skeleton type="QAvatar" animation="fade" size="40px" />
+          </q-item-section>
+
+          <q-item-section>
+            <q-item-label>
+              <q-skeleton type="text" animation="fade" />
+            </q-item-label>
+            <q-item-label caption>
+              <q-skeleton type="text" animation="fade" />
+            </q-item-label>
+          </q-item-section>
       </q-item>
 
-      <q-separator />
-       <q-img
-        :src="post.img"
-      />
+        <q-skeleton height="200px" square animation="fade" />
 
-      <q-card-section>
-        <div class="text-caption">{{post.caption}}</div>
-        <div class="text-subtitle2 text-grey-7">{{post.date | convertDate}}</div>
-      </q-card-section>
-    </q-card>
+        <q-card-section>
+          <q-skeleton type="text" class="text-subtitle2" animation="fade" />
+          <q-skeleton type="text" width="50%" class="text-subtitle2" animation="fade" />
+        </q-card-section>
+      </q-card>
+     </template>
   </div>
    <div class="col-4 large-screen">
      <q-item class="fixed">
@@ -59,41 +92,33 @@ export default {
   data() {
     return {
       posts: [
-        {
-          id: 1,
-          caption: 'Welcome to abyss',
-          date: 1620931763585,
-          location: 'Tokyo, Japan',
-          img: 'https://www.hisglobal.com.tr/assets/images/uploads/1583759608.jpg'
-        },
-        {
-          id: 2,
-          caption: 'Welcome to abyss',
-          date: 1620931763585,
-          location: 'Tokyo, Japan',
-          img: 'https://res.cloudinary.com/turna/image/upload/v1562627222/Tokyo_xedmvo.jpg'
-        },
-        {
-          id: 3,
-          caption: 'Welcome to abyss',
-          date: 1620931763585,
-          Location: 'Tokyo, Japan',
-          img: 'https://cdn.gezbegen.com/wp-content/uploads/2020/02/tokyo-3.jpg'
-        },
-        {
-          id: 4,
-          caption: 'Welcome to abyss',
-          date: 1620931763585,
-          Location: 'Tokyo, Japan',
-          img: 'https://cdn.gezbegen.com/wp-content/uploads/2020/02/tokyo-2.jpg'
-        }
-      ]
+
+      ],
+      errorMessage: '',
+      loading: false
+    }
+  },
+  methods: {
+    getPosts() {
+      this.loading = true
+     this.$axios.get(`${process.env.API}/posts`)
+     .then((res) => {
+       this.posts = res.data
+       this.loading = false
+     })
+     .catch((err) => {
+       this.errorMessage = err.message
+       this.loading = false
+     })
     }
   },
   filters: {
     convertDate(value) {
       return date.formatDate(value, 'MMMM D h:mmA')
     }
+  },
+  created() {
+    this.getPosts();
   }
 }
 </script>

@@ -9,8 +9,11 @@
         height="240"
       />
     </div>
+    <q-banner v-if="this.errorMessage" dense inline-actions class="text-white bg-red q-mt-lg q-pa-md">
+      {{ errorMessage }}
+    </q-banner>
     <div class="text-center q-pa-md">
-      <q-btn v-if="hasCamera" @click="capturePhoto" round color="grey-10" size="16px" icon="eva-camera" />
+      <q-btn v-if="hasCamera" @click="capturePhoto" :disable="imageCaptured" round color="grey-10" size="16px" icon="eva-camera" />
       <div class="row justify-center q-ma-md">
           <q-file @input="grabImage" accept=".jpg,.png,image/*" class="col col-sm-6" color="blue-10" v-model="imageUpload" label="Choose an image">
             <template v-slot:prepend>
@@ -22,14 +25,14 @@
         <q-input v-model="post.caption" class="col col-sm-6" label="Caption" dense/>
       </div>
       <div class="row justify-center q-ma-md">
-        <q-input v-model="post.location" class="col col-sm-6" label="Location" dense>
+        <q-input :loading="loadingState" v-model="post.location" class="col col-sm-6" label="Location" dense>
           <template v-slot:append>
-            <q-btn round dense flat icon="place" />
+            <q-btn v-if="!loadingState || locationSupport" @click="getLocation" round dense flat icon="place" />
           </template>
         </q-input>
       </div>
       <div class="row justify-center q-mt-lg">
-        <q-btn unelevated rounded color="primary" label="Share" />
+        <q-btn :disable="!imageCaptured" @click="addPost()" unelevated rounded color="primary" label="Share" />
       </div>
     </div>
   </q-page>
@@ -52,7 +55,16 @@ export default {
       },
       imageCaptured: false,
       imageUpload: [],
-      hasCamera: true
+      hasCamera: true,
+      errorMessage: '',
+      loadingState: false
+    }
+  },
+  computed: {
+    locationSupport() {
+      if('geolocation' in navigator) return
+      true
+      return false
     }
   },
   methods: {
@@ -127,7 +139,61 @@ export default {
     // write the ArrayBuffer to a blob, and you're done
     var blob = new Blob([ab], {type: mimeString});
     return blob;
-}
+    },
+    getLocation() {
+      this.loadingState = true;
+      navigator.geolocation.getCurrentPosition((position) => {
+        this.getExactLocation(position);
+      }, (error) => {
+        this.errorMessage = error.message;
+        this.loadingState = false;
+      }, { timeout: 8000})
+    },
+    getExactLocation(position) {
+      let apiUrl = `https://geocode.xyz/${ position.coords.latitude },${ position.coords.longitude }?json=1`
+      this.$axios.get(apiUrl)
+      .then((response) => {
+        this.getLocationFromApi(response);
+      }).catch((error) => {
+        this.errorMessage = error.message;
+        this.loadingState = false;
+      })
+    },
+    getLocationFromApi(response) {
+      this.post.location = response.data.city
+      if(response.data.country) {
+        this.post.location += `, ${ response.data.country }`
+      }
+      this.loadingState = false;
+    },
+    addPost() {
+      this.$q.loading.show()
+
+      let fd = new FormData();
+      fd.append('id', this.post.id)
+      fd.append('caption', this.post.caption)
+      fd.append('date', this.post.date)
+      fd.append('location', this.post.location)
+      fd.append('image', this.post.photo, this.post.id + '.png')
+
+      this.$axios.post(`${process.env.API}/posts/add`, fd)
+      .then((res) => {
+        console.log(res)
+        this.$router.push('/')
+         this.$q.notify({
+        message: 'Successful, redirecting...',
+        color: 'positive',
+        actions: [
+          { label: 'Dismiss', color: 'white',}
+        ]
+      })
+      this.$q.loading.hide()
+      })
+      .catch((err) => {
+        this.errorMessage = 'Was unable to create the post';
+        this.$q.loading.hide()
+      })
+    }
   },
   mounted() {
     this.initCamera()
